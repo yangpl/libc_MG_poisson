@@ -1,0 +1,174 @@
+
+\documentclass[12pt]{book}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage{fancyheadings}
+\usepackage{setspace}
+\usepackage{color}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{fancyvrb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lipsum}
+\usepackage{imakeidx}
+\usepackage[bookmarksnumbered=true,colorlinks=true,linkcolor=blue]{hyperref}
+
+\textwidth=17cm
+\textheight=22.5cm
+
+\setlength{\oddsidemargin}{-0.1in}
+\setlength{\evensidemargin}{-0.1in}
+
+\topmargin=3pt
+\abovecaptionskip=3pt
+\belowcaptionskip=3pt
+
+
+\marginparwidth 0pt \marginparsep 10pt
+\columnsep 0.5in \parindent  18pt   \parskip  0pt
+\setlength{\itemsep}{.5pt}
+\setlength{\parsep}{0pt}
+\setlength\parindent{0pt}
+\setcounter{secnumdepth}{4}
+
+\definecolor{verbgray}{gray}{0.9}
+
+\lstnewenvironment{evb}{%
+      \lstset{backgroundcolor=\color{verbgray},
+        frame=single, framerule=0pt, basicstyle=\footnotesize\ttfamily,
+              columns=fullflexible, keepspaces=true, belowskip=0.3cm}}{}
+
+\definecolor{shadecolor}{rgb}{.9, .9, .9}
+
+%%%%%% nverb
+\lstset{
+        basicstyle=\color{blue} \ttfamily,
+}
+\lstdefinestyle{inline}{
+    columns=fullflexible,breaklines=true
+}
+\newcommand{\nverb}[1]{\lstinline[style=inline]!#1!}
+
+\pagestyle{fancy}
+
+\fancyhead[RE]{\leftmark}
+\fancyhead[LO]{\rightmark}
+\fancyhead[LE,RO]{}
+\renewcommand\sectionmark[1]{\markright{\thesection.\ #1}}
+
+\newcommand{\namelistlabel}[1]{\mbox{#1}\hfill}
+\newenvironment{namelist}[1]{%
+\begin{list}{}
+  {\let\makelabel\namelistlabel
+  \settowidth{\labelwidth}{#1}
+  \setlength{\leftmargin}{1.1\labelwidth}}
+  }{%
+\end{list}}
+
+\makeindex
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+
+\vspace{5cm}
+\begin{spacing}{2.5}
+\vspace{5cm}
+\textbf{} \\[1.5cm]
+\textbf{\Huge SXAMG: a Serial Algebraic Multigrid Solver Library} \\[0.5cm]
+\textbf{VERSION 1.0}
+\vspace*{\fill}
+\end{spacing}
+
+\begin{spacing}{1.15}
+\textnormal{\large Hui Liu}
+\end{spacing}
+\end{center}
+\end{titlepage}
+
+\tableofcontents
+
+\setlength{\parskip}{8pt}
+
+\clearpage
+\pagenumbering{arabic}
+
+\include{intro}
+\include{install}
+\include{basics}
+\include{solver}
+\include{utils}
+\include{demo}
+
+\begin{thebibliography}{00}
+
+\bibitem{FASP}
+    Xiaozhe Hu, Wei Liu, Guan Qin, Jinchao Xu, Zhensong Zhang,Development of A Fast Auxiliary Subspace
+    Pre-conditioner for Numerical Reservoir Simulators, SPE-148388-MS, SPE Reservoir Characterisation and
+    Simulation Conference and Exhibition, 9-11 October, Abu Dhabi, UAE.
+
+\bibitem{Stuben2}
+    {JW Ruge and K St\"{u}ben}, {Algebraic multigrid (AMG)},
+    in: S.F. McCormick (Ed.), Multigrid Methods, Frontiers in Applied Mathematics, Vol. 5, SIAM, Philadelphia, 1986.
+
+\bibitem{BMR}
+    {A Brandt, SF McCormick, J Ruge},
+    Algebraic multigrid (AMG) for sparse matrix equations
+    D.J. Evans (Ed.), Sparsity and its Applications, Cambridge University Press, Cambridge, 1984, 257--284.
+
+\bibitem{falgout}
+    RD Falgout, An Introduction to Algebraic Multigrid, Computing in Science and Engineering,
+    Special Issue on Multigrid Computing, 8, 2006, 24--33.
+
+\bibitem{AMG-OR}
+    K. St\"{u}ben, T. Clees, H. Klie, B. Lou, M.F. Wheeler,
+    Algebraic multigrid methods (AMG) for the efficient solution of fully implicit formulations in reservoir simulation,
+    SPE Reservoir Simulation Symposium. 2007.
+
+\bibitem{AMG}
+    K. St\"{u}ben,
+    A review of algebraic multigrid,
+    Journal of Computational and Applied Mathematics 128.1 (2001): 281-309.
+
+\bibitem{psm}
+    UM Yang, On the Use of Relaxation Parameters in Hybrid Smoothers,
+    Numerical Linear Algebra With Applications, 11, (2004), 155-172.
+
+\bibitem{rsamg}
+    {AJ Cleary, RD Falgout, VE Henson, JE Jones, TA Manteuffel, SF McCormick,
+    GN Miranda, JW Ruge}, {Robustness and Scalability of Algebraic Multigrid}, SIAM J. Sci. Comput., 21, 2000, 1886--1908.
+
+\bibitem{HYPRE2}
+    R. D. Falgout, and U.M. Yang, HYPRE: A library of high performance preconditioners,
+    Lecture Notes in Computer Science, Springer Berlin Heidelberg, 2002. 632-641.
+
+\bibitem{cljp1}
+    AJ Cleary, RD Falgout, VE Henson, JE Jones, Coarse grid selection for parallel algebraic multigrid, in Proceedings of the
+    fifth international symposium on solving irregularly structured problems in parallel, Springer-Verlag, New York, 1998.
+
+\bibitem{cljp2}
+    MT Jones, PE Plassman, A parallel graph coloring heuristic, SIAM Journal on Scientific Computing, 14(1993): 654-669.
+
+\bibitem{cljp3}
+    M Luby, A simple parallel algorithm for the maximal independent set problem,
+    SIAM Journal on Computing, 15(1986), 1036-1053.
+
+\bibitem{pmis}
+    Hans~DS, Yang~UM, Heys~J,
+    Reducing Complexity in Parallel Algebraic Multigrid Preconditioners,
+    SIAM Journal on Matrix Analysis and Applications 27, (2006), 1019-1039.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,47 @@
+\chapter{Utilities}
+
+\section{Print}
+
+\nverb{sx_set_log} sets log file. If log file is set, all screen outputs will be stored to log file too.
+\begin{evb}
+void sx_set_log(FILE *io);
+\end{evb}
+
+\nverb{sx_printf} prints info to screen, if log file is set, it prints to log file and screen.
+\begin{evb}
+int sx_printf(const char *fmt, ...);
+\end{evb}
+
+\section{Memory}
+
+\nverb{sx_malloc} allocates memory.
+\begin{evb}
+void * sx_malloc(size_t size);
+\end{evb}
+
+\nverb{sx_calloc} allocates and initializes memory.
+\begin{evb}
+void * sx_calloc(size_t size, SX_INT type);
+\end{evb}
+
+\nverb{sx_realloc} reallocates memory.
+\begin{evb}
+void * sx_realloc(void *oldmem, size_t tsize);
+\end{evb}
+
+\nverb{sx_free} frees memory.
+\begin{evb}
+void sx_free(void *mem);
+\end{evb}
+
+\section{Performance}
+
+\nverb{sx_get_time} returns current time stamp.
+\begin{evb}
+SX_FLT sx_get_time(void);
+\end{evb}
+
+\nverb{sx_get_mem} returns current memory usage.
+\begin{evb}
+SX_FLT sx_get_mem(void);
+\end{evb}

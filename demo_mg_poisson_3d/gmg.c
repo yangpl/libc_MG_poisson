@@ -218,7 +218,8 @@ void v_cycle(gmg_t *gmg, int lev)
 
     if(lev==0){//compute the norm of the residual vector at the beginning of each iteration
       n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
-      rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));
+      rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));      
+      printf("residual=%e\n", rnorm);
     }
     
     restriction(gmg, r, lev);//restrict r at lev-th lev to gmg[lev+1].f 

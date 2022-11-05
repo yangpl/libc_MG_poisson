@@ -39,7 +39,8 @@ double inner_product(int n, double *x, double *y)
 }
 
 //relaxation/smoothing step for multigrid
-void smoothing(gmg_t *gmg, int lev)
+//Symmetric Gauss-Seidel for swtiching even and odd indices
+void smoothing(gmg_t *gmg, int lev, int iter)
 {
   int i, j, k;
   double a, tmp1, tmp2, tmp3, _dx2, _dy2, _dz2;
@@ -52,8 +53,11 @@ void smoothing(gmg_t *gmg, int lev)
   _dz2 = 1./(gmg[lev].dz*gmg[lev].dz);
   a = 2.*_dx2 + 2.*_dy2 + 2.*_dz2;
   for(k=1; k<gmg[lev].nz; k++){
+    if(iter%2==1) k = gmg[lev].nz-k;
     for(j=1; j<gmg[lev].ny; j++){
+      if(iter%2==1) j = gmg[lev].ny-j;
       for(i=1; i<gmg[lev].nx; i++){
+	if(iter%2==1) i = gmg[lev].nx-i;
 	tmp1 = (u[k][j][i+1] + u[k][j][i-1])*_dx2;
 	tmp2 = (u[k][j+1][i] + u[k][j-1][i])*_dy2;
 	tmp3 = (u[k+1][j][i] + u[k-1][j][i])*_dz2;
@@ -210,7 +214,7 @@ void v_cycle(gmg_t *gmg, int lev)
   int i, j, k, n;
   double ***r;
 
-  for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
+  for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
 
   if(lev<lmax-1){
     r = alloc3double(gmg[lev].nx+1, gmg[lev].ny+1, gmg[lev].nz+1);//residual vector
@@ -238,7 +242,7 @@ void v_cycle(gmg_t *gmg, int lev)
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
   
-  for(i=0; i<v2; i++) smoothing(gmg, lev);//post-smoothing
+  for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
 }
 
 //multigrid F-cycle

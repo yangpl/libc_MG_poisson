@@ -31,8 +31,8 @@ csr_t csr_transpose(csr_t A)
 
   
   // construct an array of size n to record current available position in each column of A
-  pos = alloc1int(At.ncol);
-  memset(pos, 0, At.ncol*sizeof(int));
+  pos = alloc1int(At.nrow);
+  memset(pos, 0, At.nrow*sizeof(int));
   for(i=0; i<A.nrow; i++){
     for(k=A.row_ptr[i]; k<A.row_ptr[i+1]; k++){
       j = A.col_ind[k];//a_ij=A.val[k]

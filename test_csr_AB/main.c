@@ -10,7 +10,10 @@ csr_t csr_transpose(csr_t A)
 
   At.nrow = A.ncol;
   At.ncol = A.nrow;
+  At.nnz = A.nnz;
   At.row_ptr = alloc1int(At.nrow+1);
+  At.col_ind = alloc1int(At.nnz);
+  At.val = alloc1double(At.nnz);
 
   memset(At.row_ptr, 0, (At.nrow+1)*sizeof(int));
   for(i=0; i<A.nrow; i++){
@@ -20,12 +23,12 @@ csr_t csr_transpose(csr_t A)
     }
   }
   //then, add the total number of nonzeros before i-th column
-  for(j=0; j<A.ncol; j++) At.row_ptr[j+1] += At.row_ptr[j];
+  //printf("%d\n", At.row_ptr[0]);
+  for(j=0; j<At.nrow; j++){
+    At.row_ptr[j+1] += At.row_ptr[j];
+    //printf("%d\n", At.row_ptr[j+1]);
+  }
 
-  
-  At.nnz = At.row_ptr[At.nrow];
-  At.val = alloc1double(At.nnz);
-  At.col_ind = alloc1int(At.nnz);
   
   // construct an array of size n to record current available position in each column of A
   pos = alloc1int(At.ncol);
@@ -140,7 +143,7 @@ int main()
   A.row_ptr[0] = 0;
   k = 0;
   for(i=0; i<n; i++){
-    for(j=1; j<n; j++){
+    for(j=0; j<n; j++){
       A.col_ind[k] = j;
       A.val[k] = B[i][j];
       k++;
@@ -157,8 +160,9 @@ int main()
     printf("\n");
   }
 
-  printf("---------At-------\n");
+  
   At = csr_transpose(A);
+  printf("-------At---------\n");
   for(i=0; i<At.nrow; i++){
     for(k=At.row_ptr[i]; k<At.row_ptr[i+1]; k++){
       j = At.col_ind[k];

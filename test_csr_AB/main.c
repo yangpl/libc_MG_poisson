@@ -102,7 +102,8 @@ csr_t build_AB(csr_t A, csr_t B)
       }
     }
   }  
-
+  C.row_ptr[C.nrow] = m;
+  
   free1int(pos);
 
   return C;

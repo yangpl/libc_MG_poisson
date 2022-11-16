@@ -455,7 +455,7 @@ csr_t build_RAP(csr_t R, csr_t A, csr_t P)
       }//end for k2
     }//end for k1
   }//end for m
-  
+  T.row_ptr[T.nrow] = k;
   free1int(pos);
 
   return T;

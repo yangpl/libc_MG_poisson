@@ -9,8 +9,11 @@ icsr_t icsr_transpose(icsr_t S)
 
   St.nrow = S.ncol;
   St.ncol = S.nrow;
+  St.nnz = S.nnz;
   St.row_ptr = alloc1int(St.nrow+1);
-
+  St.col_ind = alloc1int(St.nnz);
+  St.val = alloc1int(St.nnz);
+  
   memset(St.row_ptr, 0, (St.nrow+1)*sizeof(int));
   for(i=0; i<S.nrow; i++){
     for(k=S.row_ptr[i]; k<S.row_ptr[i+1]; k++){
@@ -19,14 +22,10 @@ icsr_t icsr_transpose(icsr_t S)
     }
   }
   //then, add the total number of nonzeros before i-th column
-  for(j=0; j<S.ncol; j++) St.row_ptr[j+1] += St.row_ptr[j];
-
-  St.nnz = S.nnz;
-  St.val = alloc1int(St.nnz);
-  St.col_ind = alloc1int(St.nnz);
+  for(j=0; j<St.nrow; j++) St.row_ptr[j+1] += St.row_ptr[j];
   
   // construct an array of size n to record current available position in each column of A
-  pos = alloc1int(S.ncol);
+  pos = alloc1int(St.nrow);
   memset(pos, 0, St.nrow*sizeof(int));
   for(i=0; i<S.nrow; i++){
     for(k=S.row_ptr[i]; k<S.row_ptr[i+1]; k++){

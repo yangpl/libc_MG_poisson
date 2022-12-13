@@ -8,6 +8,7 @@
  *-----------------------------------------------------------------------*/
 #include "cstd.h"
 
+int cycleopt;
 int itermax;
 int v1;//number of pre-smoothing
 int v2;//number of post-smoothing
@@ -220,7 +221,7 @@ void v_cycle(gmg_t *gmg, int lev)
     r = alloc3double(gmg[lev].nx+1, gmg[lev].ny+1, gmg[lev].nz+1);//residual vector
     residual(gmg, r, lev);//residual r=f-Au at lev-th lev
 
-    if(lev==0){//compute the norm of the residual vector at the beginning of each iteration
+    if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
       n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
       rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));      
       printf("residual=%e\n", rnorm);
@@ -256,7 +257,12 @@ void f_cycle(gmg_t *gmg, int lev)
     memset(&gmg[lev].u[0][0][0], 0, n*sizeof(double));
   }else{
     r = alloc3double(gmg[lev].nx+1, gmg[lev].ny+1, gmg[lev].nz+1);
-    residual(gmg, r, lev);//residual r=f-Au at lev-th level
+    residual(gmg, r, lev);//residual r=f-Au at lev-th level    
+    if(cycleopt==2 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
+      n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
+      rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));      
+      printf("residual=%e\n", rnorm);
+    }
     restriction(gmg, r, lev);//restrict r at lev-th lev to f at (lev+1)-th level
 
     n = (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*(gmg[lev+1].nz+1);
@@ -280,6 +286,7 @@ void gmg_init(int nx, int ny, int nz, double dx, double dy, double dz)
   if(!getparint("itermax", &itermax)) itermax = 10;/* maximum number of iterations */  
   if(!getparint("v1", &v1)) v1 = 1;/* number of pre-smoothing */
   if(!getparint("v2", &v2)) v2 = 1;/* number of post-smoothing */
+  if(!getparint("cycleopt", &cycleopt)) cycleopt = 1;//1=v cycle; 2=f cycle
   if(!getpardouble("tol", &tol)) tol = 1e-6;/* stopping criteria */
   if(!getparint("lmax", &lmax)) {
     lmax = 0;
@@ -318,9 +325,10 @@ void gmg_apply(int n, double *b, double *x)
 
   memcpy(&gmg[0].f[0][0][0], b, n*sizeof(double));
   memset(&gmg[0].u[0][0][0], 0, n*sizeof(double));
-
-  for(iter=0; iter<itermax; iter++) f_cycle(gmg, 0);
-
+  for(iter=0; iter<itermax; iter++){
+    if(cycleopt==1) v_cycle(gmg, 0);
+    if(cycleopt==2) f_cycle(gmg, 0);
+  }
   memcpy(x, &gmg[0].u[0][0][0], n*sizeof(double));
 }
 

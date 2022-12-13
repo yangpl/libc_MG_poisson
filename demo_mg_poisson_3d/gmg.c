@@ -215,18 +215,20 @@ void v_cycle(gmg_t *gmg, int lev)
   int i, j, k, n;
   double ***r;
 
+  if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
+    r = alloc3double(gmg[lev].nx+1, gmg[lev].ny+1, gmg[lev].nz+1);//residual vector
+    residual(gmg, r, lev);//residual r=f-Au at lev-th lev    
+    n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
+    rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));      
+    printf("residual=%e\n", rnorm);
+    free3double(r);
+  }
+
   for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
 
   if(lev<lmax-1){
     r = alloc3double(gmg[lev].nx+1, gmg[lev].ny+1, gmg[lev].nz+1);//residual vector
-    residual(gmg, r, lev);//residual r=f-Au at lev-th lev
-
-    if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
-      n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
-      rnorm = sqrt(inner_product(n, &r[0][0][0], &r[0][0][0]));      
-      printf("residual=%e\n", rnorm);
-    }
-    
+    residual(gmg, r, lev);//residual r=f-Au at lev-th lev    
     restriction(gmg, r, lev);//restrict r at lev-th lev to gmg[lev+1].f 
 
     n = (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*(gmg[lev+1].nz+1);

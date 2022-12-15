@@ -160,10 +160,20 @@ void restriction(gmg_t *gmg, int lev)
   }
 }
 
+void correction(gmg_t *gmg, int lev)
+{
+  int i, j;
+  
+  for(j=1; j<gmg[lev].ny; j++)
+      for(i=1; i<gmg[lev].nx; i++)
+	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
+
+}
+
 //multigrid V-cycle
 void v_cycle(gmg_t *gmg, int lev)
 {
-  int i, j;
+  int i;
   
   if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
     residual(gmg, lev);//residual r=f-Au at lev-th lev
@@ -181,9 +191,7 @@ void v_cycle(gmg_t *gmg, int lev)
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    for(j=1; j<gmg[lev].ny; j++)
-      for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
+    correction(gmg, lev);
   }
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
@@ -193,9 +201,7 @@ void v_cycle(gmg_t *gmg, int lev)
 
 //multigrid F-cycle
 void f_cycle(gmg_t *gmg, int lev)
-{
-  int i, j;
-    
+{    
   if(lev==lmax-1){//coarsest grid, direct solve or smoothing
     memset(&gmg[lev].u[0][0], 0, (gmg[lev].nx+1)*(gmg[lev].ny+1)*sizeof(double));
   }else{
@@ -210,9 +216,7 @@ void f_cycle(gmg_t *gmg, int lev)
     memset(&gmg[lev+1].u[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
     f_cycle(gmg, lev+1);
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    for(j=1; j<gmg[lev].ny; j++)
-      for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
+    correction(gmg, lev);
   }
   v_cycle(gmg, lev);// another v-cycle at (lev+1)-th level
 }
@@ -233,15 +237,15 @@ void gmg_init(int nx, int ny, double dx, double dy)
     while(nx_>1) {nx_=nx_>>1; lmax++;}
   }
   
-  gmg = (gmg_t *)malloc(lmax*sizeof(gmg_t));
+  gmg = malloc(lmax*sizeof(gmg_t));
   for(i=0; i<lmax; i++){
     gmg[i].nx = nx/(1<<i);//nx/2^i
     gmg[i].ny = ny/(1<<i);//ny/2^i
     gmg[i].dx = dx*(1<<i);//dx*2^i
     gmg[i].dy = dy*(1<<i);//dy*2^i    
-    gmg[i].u = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
-    gmg[i].f = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
-    gmg[i].r = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
+    gmg[i].u = alloc2double(gmg[i].nx+1, gmg[i].ny+1);
+    gmg[i].f = alloc2double(gmg[i].nx+1, gmg[i].ny+1);
+    gmg[i].r = alloc2double(gmg[i].nx+1, gmg[i].ny+1);
   }
   
 }

@@ -23,6 +23,7 @@ typedef struct{
   double dy;
   double **u;
   double **f;
+  double **r;
 } gmg_t;
 gmg_t *gmg;
 
@@ -59,15 +60,17 @@ void smoothing(gmg_t *gmg, int lev)
 }
 
 //compute residual r=f-Au
-void residual(gmg_t *gmg, double **r, int lev)
+void residual(gmg_t *gmg, int lev)
 {
   int i, j;
-  double _dx2, _dy2, tmp1, tmp2, **u, **f;
+  double _dx2, _dy2, tmp1, tmp2;
+  double **u, **f, **r;
   
   _dx2 = 1./(gmg[lev].dx*gmg[lev].dx);
   _dy2 = 1./(gmg[lev].dy*gmg[lev].dy);  
   u = gmg[lev].u;
   f = gmg[lev].f;
+  r = gmg[lev].r;
   for(j=1; j<gmg[lev].ny; j++){
     for(i=1; i<gmg[lev].nx; i++){
       tmp1 = (u[j][i+1] - 2.*u[j][i] + u[j][i-1])*_dx2;
@@ -87,11 +90,12 @@ void residual(gmg_t *gmg, double **r, int lev)
 }
 
 //interpolate u from (lev+1) to lev-th level
-void prolongation(gmg_t *gmg, double **r, int lev)
+void prolongation(gmg_t *gmg, int lev)
 {
-  double **u;
+  double **u, **r;
   int i, j;
 
+  r = gmg[lev].r;
   memset(&r[0][0], 0, (gmg[lev].nx+1)*(gmg[lev].ny+1)*sizeof(double));
   u = gmg[lev+1].u;
   for(j=1; j<gmg[lev+1].ny; j++){
@@ -123,13 +127,14 @@ void prolongation(gmg_t *gmg, double **r, int lev)
 }
 
 //restrict r from lev to (lev+1)-th lev: fine to coarse grid
-void restriction(gmg_t *gmg, double **r, int lev)
+void restriction(gmg_t *gmg, int lev)
 {
   int i, j;
-  double tmp1, tmp2, **f;
+  double tmp1, tmp2, **f, **r;
 
   //full weighting operator for restriction
   f = gmg[lev+1].f;
+  r = gmg[lev].r;
   memset(&f[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
   for(j=1; j<gmg[lev+1].ny; j++){
     for(i=1; i<gmg[lev+1].nx; i++){
@@ -159,31 +164,26 @@ void restriction(gmg_t *gmg, double **r, int lev)
 void v_cycle(gmg_t *gmg, int lev)
 {
   int i, j;
-  double **r;
   
   if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
-    r = alloc2double(gmg[lev].nx+1, gmg[lev].ny+1);//residual vector
-    residual(gmg, r, lev);//residual r=f-Au at lev-th lev
-    rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &r[0][0], &r[0][0]));
+    residual(gmg, lev);//residual r=f-Au at lev-th lev
+    rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
     printf("residual=%e\n", rnorm);
-    free2double(r);
   }    
 
   for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
 
   if(lev<lmax-1){
-    r = alloc2double(gmg[lev].nx+1, gmg[lev].ny+1);//residual vector
-    residual(gmg, r, lev);//residual r=f-Au at lev-th lev
-    restriction(gmg, r, lev);//restrict r at lev-th lev to gmg[lev+1].f 
+    residual(gmg, lev);//residual r=f-Au at lev-th lev
+    restriction(gmg, lev);//restrict r at lev-th lev to gmg[lev+1].f 
 
     memset(&gmg[lev+1].u[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
-    prolongation(gmg, r, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
+    prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
     for(j=1; j<gmg[lev].ny; j++)
       for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[j][i] += r[j][i];//correct u=u+r at interior without boundaries
-    free2double(r);
+	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
   }
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
@@ -195,27 +195,24 @@ void v_cycle(gmg_t *gmg, int lev)
 void f_cycle(gmg_t *gmg, int lev)
 {
   int i, j;
-  double **r;
     
   if(lev==lmax-1){//coarsest grid, direct solve or smoothing
     memset(&gmg[lev].u[0][0], 0, (gmg[lev].nx+1)*(gmg[lev].ny+1)*sizeof(double));
   }else{
-    r = alloc2double(gmg[lev].nx+1, gmg[lev].ny+1);
-    residual(gmg, r, lev);//residual r=f-Au at lev-th level
+    residual(gmg, lev);//residual r=f-Au at lev-th level
     if(cycleopt==2 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
-      rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &r[0][0], &r[0][0]));
+      rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
       printf("residual=%e\n", rnorm);
     }
 
-    restriction(gmg, r, lev);//restrict r at lev-th lev to f at (lev+1)-th level
+    restriction(gmg, lev);//restrict r at lev-th lev to f at (lev+1)-th level
 
     memset(&gmg[lev+1].u[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
     f_cycle(gmg, lev+1);
-    prolongation(gmg, r, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
+    prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
     for(j=1; j<gmg[lev].ny; j++)
       for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[j][i] += r[j][i];//correct u=u+r at interior without boundaries
-    free2double(r);
+	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
   }
   v_cycle(gmg, lev);// another v-cycle at (lev+1)-th level
 }
@@ -244,6 +241,7 @@ void gmg_init(int nx, int ny, double dx, double dy)
     gmg[i].dy = dy*(1<<i);//dy*2^i    
     gmg[i].u = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
     gmg[i].f = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
+    gmg[i].r = (double**) alloc2double(gmg[i].nx+1, gmg[i].ny+1);
   }
   
 }
@@ -255,6 +253,7 @@ void gmg_close()
   for(i=0; i<lmax; i++){
     free2double(gmg[i].u);
     free2double(gmg[i].f);
+    free2double(gmg[i].r);
   }
   free(gmg);
 }

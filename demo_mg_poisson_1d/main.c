@@ -15,6 +15,7 @@ typedef struct {
   double dx; //grid spacing
   double *u; // unknown
   double *f; // right hand side
+  double *r; // r=f-Au
 } grid1d;
 
 int v0; //number of V cycles in F cycle
@@ -111,15 +112,11 @@ void prolongation(int nxc,  double *rc, int nxf, double *pf)
 void v_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
-  double *rr;
 
   if(level==0) {
-    //return residual at finest grid for computing convergence factor
-    rr = alloc1double(g[level].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx, g[level].f, g[level].u, rr);
-    *res = sqrt(dotprod(g[level].nx, rr, rr));
-    free(rr);
+    residual(g[level].nx, g[level].dx, g[level].f, g[level].u, g[level].r);
+    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
   }
 
 
@@ -129,13 +126,11 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
     //pre-smoothing relaxation: v1 sweeps
     for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
-    rr = alloc1double(g[l].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, rr);
+    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
 
     //restriction f^2h = I_h^2h r^h
-    restriction(g[l].nx, rr, g[l+1].nx, g[l+1].f);
-    free(rr);
+    restriction(g[l].nx, g[l].r, g[l+1].nx, g[l+1].f);
 
     //initial guess for level 2h = 0
     memset(g[l+1].u, 0, (g[l+1].nx+1)*sizeof(double));	    
@@ -159,13 +154,11 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
   //-------------------------------------------------------------
   //3. from coarse to fine grid step by step
   for(l=lmax-2; l>=level; l--){
-    rr = alloc1double(g[l].nx+1);
     //prolongation  (2h->h)
-    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, rr);
+    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, g[l].r);
 
     //correcton on level-h
-    for(i=0; i<g[l].nx; i++) g[l].u[i] += rr[i];
-    free(rr);
+    for(i=0; i<g[l].nx; i++) g[l].u[i] += g[l].r[i];
 
     //post-smoothing/relaxation: v2 sweeps
     for(i=1; i<=v2; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
@@ -175,15 +168,11 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
 void w_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
-  double *rr;
 
   if(level==0) {
-    //return residual at finest grid for computing convergence rate
-    rr = alloc1double(g[level].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, rr);
-    *res = sqrt(dotprod(g[level].nx, rr, rr));
-    free(rr);
+    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, g[level].r);
+    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
   }
 
   //-------------------------------------------------------------
@@ -192,9 +181,8 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
     //pre-smoothing relaxation: v1 sweeps
     for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
-    rr = alloc1double(g[l].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, rr);
+    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
 
     //=====================================================
     //start a V cycle based on the new solution at level l
@@ -202,8 +190,7 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
     //=====================================================
 
     //restriction f^2h = I_h^2h r^h
-    restriction(g[l].nx, rr, g[l+1].nx, g[l+1].f);
-    free(rr);
+    restriction(g[l].nx, g[l].r, g[l+1].nx, g[l+1].f);
 
     //initial guess for level 2h = 0
     memset(g[l+1].u, 0, (g[l+1].nx+1)*sizeof(double));	    
@@ -227,13 +214,11 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
   //-------------------------------------------------------------
   //3. from coarse grid to fine grid step by step
   for(l=lmax-2; l>=level; l--){
-    rr = alloc1double(g[l].nx+1);
     //prolongation  (2h->h)
-    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, rr);
+    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, g[l].r);
 
     //correcton on level-h
-    for(i=0; i<g[l].nx; i++) g[l].u[i] += rr[i];
-    free(rr);
+    for(i=0; i<g[l].nx; i++) g[l].u[i] += g[l].r[i];
 
     //=====================================================
     //start a V cycle based on the new solution at level l
@@ -251,15 +236,12 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
 void f_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
-  double *rr;
 
   if(level==0) {
     //return residual at finest grid for computing convergence rate
-    rr = alloc1double(g[level].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, rr);
-    *res = sqrt(dotprod(g[level].nx, rr, rr));
-    free(rr);
+    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, g[level].r);
+    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
   }
 
   //-------------------------------------------------------------
@@ -268,13 +250,11 @@ void f_cycle(int lmax, int level, grid1d *g, double *res)
     //pre-smoothing relaxation: v1 sweeps
     for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
-    rr = alloc1double(g[l].nx+1);
     //compute residual r^h = f^h-A^h u^h
-    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, rr);
+    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
 
     //restriction f^2h = I_h^2h r^h
-    restriction(g[l].nx, rr, g[l+1].nx, g[l+1].f);
-    free(rr);
+    restriction(g[l].nx, g[l].r, g[l+1].nx, g[l+1].f);
 
     //initial guess for level 2h = 0
     memset(g[l+1].u, 0, (g[l+1].nx+1)*sizeof(double));	     
@@ -298,13 +278,11 @@ void f_cycle(int lmax, int level, grid1d *g, double *res)
   //-------------------------------------------------------------
   //3. from coarse grid to fine grid step by step
   for(l=lmax-2; l>=level; l--){
-    rr = alloc1double(g[l].nx+1);
     //prolongation  (2h->h)
-    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, rr);
+    prolongation(g[l+1].nx, g[l+1].u, g[l].nx, g[l].r);
 
     //correcton on level-h
-    for(i=0; i<g[l].nx; i++) g[l].u[i] += rr[i];
-    free(rr);
+    for(i=0; i<g[l].nx; i++) g[l].u[i] += g[l].r[i];
 
     //=====================================================
     //start a V cycle based on the new solution at level l
@@ -385,8 +363,10 @@ int main(int argc, char* argv[])
   g[0].dx = dx;
   g[0].u = alloc1double(nx+1);
   g[0].f = alloc1double(nx+1);
+  g[0].r = alloc1double(nx+1);
   memcpy(g[0].u, u, (nx+1)*sizeof(double));
   memcpy(g[0].f, f, (nx+1)*sizeof(double));
+
 
   FILE *fp=fopen("iterate.txt","w");
   for(k=0; k<niter; k++){
@@ -395,6 +375,7 @@ int main(int argc, char* argv[])
       g[l].dx = g[l-1].dx*2;
       g[l].u = alloc1double(g[l].nx+1);
       g[l].f = alloc1double(g[l].nx+1);
+      g[l].r = alloc1double(g[l].nx+1);
     }
 
     if(strcmp(mgcycle,"V")==0) 
@@ -407,6 +388,7 @@ int main(int argc, char* argv[])
     for(l=1; l<lmax; l++){
       free(g[l].u);
       free(g[l].f);
+      free(g[l].r);
     }  
 
     if (k==0) {
@@ -423,6 +405,7 @@ int main(int argc, char* argv[])
 
   free(g[0].u);
   free(g[0].f);
+  free(g[0].r);
 
   free(x);
   free(f);

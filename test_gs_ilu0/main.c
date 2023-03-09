@@ -4,7 +4,7 @@
 void gaussian_elimination_ikj(int n, double **a, double *x, double *b)
 {
   int i, j, k;
-  double *y = alloc1double(n);
+  double s, *y = x;
 
   //A=LU
   for(i=1; i<n; i++){
@@ -18,22 +18,22 @@ void gaussian_elimination_ikj(int n, double **a, double *x, double *b)
 
   //Ly=b
   for(i=0; i<n; i++){
-    y[i] = b[i];
+    s = 0;
     for(j=0; j<i; j++){
-      y[i] -= a[i][j]*y[j];
+      s += a[i][j]*y[j];
     }
+    y[i] = b[i] - s;
   }
 
   //Ux=y
   for(i=n-1; i>=0; i--){
-    x[i] = y[i];
+    s = 0;
     for(j=i+1; j<n; j++){
-      x[i] -= a[i][j]*x[j];
+      s += a[i][j]*x[j];
     }
-    x[i] /= a[i][i];
+    x[i] = (y[i]-s)/a[i][i];
   }
   
-  free1double(y);
 }
 
 //incomplete LU(0)
@@ -80,26 +80,25 @@ void ilu0(csr_t A_, double *x, double *b)
   }//end for i
 
   //A=LU, now we solve: Ly=b and Ux = y
-  y = alloc1double(A.nrow);
+  y = x;
   for(i=0; i<A.nrow; i++){
-    y[i] = b[i];
+    tmp = 0;
     for(k1=A.row_ptr[i]; k1<kii[i]; k1++){
       j = A.col_ind[k1];
-      y[i] -= A.val[k1]*y[j];//y_i = b_i-\sum_{j<i} a_ij*y_j
+      tmp += A.val[k1]*y[j];//y_i = b_i-\sum_{j<i} a_ij*y_j
     }
+    y[i] = b[i]-tmp;
   }
 
   for(i=A.nrow-1; i>=0; i--){
-    x[i] = y[i];
+    tmp = 0.;
     for(k1=kii[i]+1; k1<A.row_ptr[i+1]; k1++){
       j = A.col_ind[k1];
-      x[i] -= A.val[k1]*x[j];
+      tmp += A.val[k1]*x[j];
     }
-    x[i] /= A.val[kii[i]];//a_ii
+    x[i] = (y[i]-tmp)/A.val[kii[i]];//a_ii
   }
 
-
-  free1double(y);
   free1int(kii);
   free1int(A.row_ptr);
   free1int(A.col_ind);
@@ -180,7 +179,6 @@ int main()
   csr_t A;
   double **B;
 
-  
   n = 3;
   B = alloc2double(n, n);
   

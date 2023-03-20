@@ -39,8 +39,8 @@ void gaussian_elimination_ikj(int n, double **a, double *x, double *b)
 //incomplete LU(0)
 void ilu0(csr_t A_, double *x, double *b)
 {
-  int i, j, k, k1, k2, k3;
-  int *kii;
+  int i, j, k, innz, knnz, mnnz;
+  int *innz_aii, *iwork;
   double *y, tmp;
   csr_t A;
 
@@ -54,52 +54,71 @@ void ilu0(csr_t A_, double *x, double *b)
   memcpy(A.col_ind, A_.col_ind, A.nnz*sizeof(int));
   memcpy(A.val, A_.val, A.nnz*sizeof(double));
   
-  kii = alloc1int(A.nrow);//a working array for bookkeeping nnz index of aii
+  innz_aii = alloc1int(A.nrow);//a working array for bookkeeping nnz index of aii
+  iwork = alloc1int(A.ncol);//working array storing the k of the k-th nnz
+
+  for(j=0; j<A.ncol; j++) iwork[j] = -1;//preset to -1
+  
   for(i=0; i<A.nrow; i++){
-    for(k1=A.row_ptr[i]; k1<A.row_ptr[i+1]; k1++){
-      k = A.col_ind[k1];
-      if(k==i) {
-	kii[i] = k1; //bookkeep nnz index of diagonal element
-	break;
-      }
+    //------------------------------------------------
+    for(innz=A.row_ptr[i]; innz<A.row_ptr[i+1]; innz++){//innz=nnz index in i-th row
+      j = A.col_ind[innz];
+      iwork[j] = innz;//storing all innz of the i-th row into j-th column location
+    }
+    
+    //------------------------------------------------
+    innz = A.row_ptr[i];
+    while(1){//scan the i-th row
+      k = A.col_ind[innz];
+      if(k<i) {//a_ik, k=1,...,i-1
+	tmp = A.val[innz]*A.val[innz_aii[k]]; //a_ik<--a_ik/a_kk, 1/a_kk stored in a_kk
+	A.val[innz] = tmp;
+	for(knnz=innz_aii[k]+1; knnz<A.row_ptr[k+1]; knnz++){//assume innz_aii[k] is known
+	  j = A.col_ind[knnz];
+	  mnnz = iwork[j];
+	  if(mnnz != -1)//it means A.val[mnnz] is an nonzero element in i-th row
+	    A.val[mnnz] -= tmp*A.val[knnz];//a_ij -= a_ik*a_kj
+	}
+	innz++;
+	if(innz>=A.row_ptr[i+1]) break;//exit if it goes to next row
+      }else
+	break;//a_ik, k>=i
+    }
+    innz_aii[i] = innz;//store pointer of diagonal element in i-th row
+    //if(k!=i || A.val[innz]==0.0) return -1;//return error code -1 if zero pivot is found
+    A.val[innz] = 1./A.val[innz]; //a_ii <-- 1./a_ii
+
+    //------------------------------------------------
+    for(innz=A.row_ptr[i]; innz<A.row_ptr[i+1]; innz++){//innz=nnz index in i-th row
+      j = A.col_ind[innz];
+      iwork[j] = -1;//reset all entries of iwork[] to -1
     }
   }
-
-  for(i=1; i<A.nrow; i++){
-    for(k1=A.row_ptr[i]; k1<kii[i]; k1++){
-      k = A.col_ind[k1];//k=1,...i-1
-      A.val[k1] /= A.val[kii[k]];//a_ik /= a_kk, a_kk=A.val[kii[k]]
-      for(k2=kii[k]+1; k2<A.row_ptr[k+1]; k2++){
-	j = A.col_ind[k2];//a_kj, j=k+1,...n
-	tmp = A.val[k1]*A.val[k2];//a_ik*a_kj
-	for(k3=A.row_ptr[i]; k3<A.row_ptr[i+1]; k3++){
-	  if(j==A.col_ind[k3]) A.val[k3] -= tmp;//a_ij-=a_ik*a_kj
-	}//end for k3
-      }//end for k2
-    }//end for k1
-  }//end for i
-
+  //return 0;//normal exit
+  
+  
   //A=LU, now we solve: Ly=b and Ux = y
   y = x;
   for(i=0; i<A.nrow; i++){
     tmp = 0;
-    for(k1=A.row_ptr[i]; k1<kii[i]; k1++){
-      j = A.col_ind[k1];
-      tmp += A.val[k1]*y[j];//y_i = b_i-\sum_{j<i} a_ij*y_j
+    for(k=A.row_ptr[i]; k<A.row_ptr[i+1]; k++){
+      j = A.col_ind[k];
+      if(j<i) tmp += A.val[k]*y[j];//y_i = b_i-\sum_{j<i} a_ij*y_j
     }
     y[i] = b[i]-tmp;
   }
 
   for(i=A.nrow-1; i>=0; i--){
     tmp = 0.;
-    for(k1=kii[i]+1; k1<A.row_ptr[i+1]; k1++){
-      j = A.col_ind[k1];
-      tmp += A.val[k1]*x[j];
+    for(k=A.row_ptr[i]; k<A.row_ptr[i+1]; k++){
+      j = A.col_ind[k];
+      if(j>i) tmp += A.val[k]*x[j];
     }
-    x[i] = (y[i]-tmp)/A.val[kii[i]];//a_ii
+    x[i] = (y[i]-tmp)/A.val[innz_aii[i]];//a_ii
   }
 
-  free1int(kii);
+  free1int(innz_aii);
+  free1int(iwork);
   free1int(A.row_ptr);
   free1int(A.col_ind);
   free1double(A.val);

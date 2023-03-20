@@ -54,9 +54,8 @@ void ilu0(csr_t A_, double *x, double *b)
   memcpy(A.col_ind, A_.col_ind, A.nnz*sizeof(int));
   memcpy(A.val, A_.val, A.nnz*sizeof(double));
   
-  innz_aii = alloc1int(A.nrow);//a working array for bookkeeping nnz index of aii
-  iwork = alloc1int(A.ncol);//working array storing the k of the k-th nnz
-
+  innz_aii = alloc1int(A.nrow);//working array for bookkeeping nnz index of diagonal elments
+  iwork = alloc1int(A.ncol);//working array for book-keeping nnz index of each row
   for(j=0; j<A.ncol; j++) iwork[j] = -1;//preset to -1
   
   for(i=0; i<A.nrow; i++){
@@ -68,9 +67,11 @@ void ilu0(csr_t A_, double *x, double *b)
     
     //------------------------------------------------
     innz = A.row_ptr[i];
-    while(1){//scan the i-th row
+    while(innz<A.row_ptr[i+1]){//scan the i-th row
       k = A.col_ind[innz];
-      if(k<i) {//a_ik, k=1,...,i-1
+      if(k>=i){//a_ik, k=i,i+1,...,n
+	break;
+      }else{//a_ik, k=1,...,i-1
 	tmp = A.val[innz]*A.val[innz_aii[k]]; //a_ik<--a_ik/a_kk, 1/a_kk stored in a_kk
 	A.val[innz] = tmp;
 	for(knnz=innz_aii[k]+1; knnz<A.row_ptr[k+1]; knnz++){//assume innz_aii[k] is known
@@ -80,9 +81,7 @@ void ilu0(csr_t A_, double *x, double *b)
 	    A.val[mnnz] -= tmp*A.val[knnz];//a_ij -= a_ik*a_kj
 	}
 	innz++;
-	if(innz>=A.row_ptr[i+1]) break;//exit if it goes to next row
-      }else
-	break;//a_ik, k>=i
+      }
     }
     innz_aii[i] = innz;//store pointer of diagonal element in i-th row
     //if(k!=i || A.val[innz]==0.0) return -1;//return error code -1 if zero pivot is found

@@ -120,42 +120,30 @@ void residual(gmg_t *gmg, int lev)
 //interpolate u from (lev+1) to lev-th level
 void prolongation(gmg_t *gmg, int lev)
 {
-  double ***u, ***r;
+  double ***e, ***u;
   int i, j, k;
 
-  u = gmg[lev+1].u;
-  r = gmg[lev].r;
+  e = gmg[lev+1].u;
+  u = gmg[lev].u;
   for(k=0; k<gmg[lev+1].nz; k++){
     for(j=0; j<gmg[lev+1].ny; j++){
       for(i=0; i<gmg[lev+1].nx; i++){
-	r[2*k][2*j][2*i] = u[k][j][i];
-	r[2*k][2*j][2*i+1] = 0.5*(u[k][j][i] + u[k][j][i+1]);
-	r[2*k][2*j+1][2*i] = 0.5*(u[k][j][i] + u[k][j+1][i]);
-	//r[2*k][2*j+1][2*i+1] = 0.5*(0.5*(u[k][j][i] + u[k][j][i+1]) + 0.5*(u[k][j+1][i] + u[k][j+1][i+1]));
-	r[2*k][2*j+1][2*i+1] = 0.25*(u[k][j][i] + u[k][j][i+1] + u[k][j+1][i] + u[k][j+1][i+1]);
-	r[2*k+1][2*j][2*i] = 0.5*(u[k][j][i] + u[k+1][j][i]);
-	//r[2*k+1][2*j][2*i+1] = 0.5*(0.5*(u[k][j][i] + u[k][j][i+1]) + 0.5*(u[k+1][j][i] + u[k+1][j][i+1]));
-	r[2*k+1][2*j][2*i+1] = 0.25*(u[k][j][i] + u[k][j][i+1] + u[k+1][j][i] + u[k+1][j][i+1]);
-	//r[2*k+1][2*j+1][2*i] = 0.5*(0.5*(u[k][j][i] + u[k][j+1][i]) + 0.5*(u[k+1][j][i] + u[k+1][j+1][i]));
-	r[2*k+1][2*j+1][2*i] = 0.25*(u[k][j][i] + u[k][j+1][i] + u[k+1][j][i] + u[k+1][j+1][i]);
-	r[2*k+1][2*j+1][2*i+1] = 0.125*(  u[k][j][i] + u[k][j][i+1] + u[k][j+1][i] + u[k][j+1][i+1]
-					+ u[k+1][j][i] + u[k+1][j][i+1] + u[k+1][j+1][i] + u[k+1][j+1][i+1]);
+	u[2*k][2*j][2*i] += e[k][j][i];
+	u[2*k][2*j][2*i+1] += 0.5*(e[k][j][i] + e[k][j][i+1]);
+	u[2*k][2*j+1][2*i] += 0.5*(e[k][j][i] + e[k][j+1][i]);
+	//u[2*k][2*j+1][2*i+1] += 0.5*(0.5*(e[k][j][i] + e[k][j][i+1]) + 0.5*(e[k][j+1][i] + e[k][j+1][i+1]));
+	u[2*k][2*j+1][2*i+1] += 0.25*(e[k][j][i] + e[k][j][i+1] + e[k][j+1][i] + e[k][j+1][i+1]);
+	u[2*k+1][2*j][2*i] += 0.5*(e[k][j][i] + e[k+1][j][i]);
+	//u[2*k+1][2*j][2*i+1] += 0.5*(0.5*(e[k][j][i] + e[k][j][i+1]) + 0.5*(e[k+1][j][i] + e[k+1][j][i+1]));
+	u[2*k+1][2*j][2*i+1] += 0.25*(e[k][j][i] + e[k][j][i+1] + e[k+1][j][i] + e[k+1][j][i+1]);
+	//u[2*k+1][2*j+1][2*i] += 0.5*(0.5*(e[k][j][i] + e[k][j+1][i]) + 0.5*(e[k+1][j][i] + e[k+1][j+1][i]));
+	u[2*k+1][2*j+1][2*i] += 0.25*(e[k][j][i] + e[k][j+1][i] + e[k+1][j][i] + e[k+1][j+1][i]);
+	u[2*k+1][2*j+1][2*i+1] += 0.125*(  e[k][j][i] + e[k][j][i+1] + e[k][j+1][i] + e[k][j+1][i+1]
+					+ e[k+1][j][i] + e[k+1][j][i+1] + e[k+1][j+1][i] + e[k+1][j+1][i+1]);
       }
     }
   }
 
-  //handle boundaries
-  for(k=0; k<=gmg[lev+1].nz; k++)  
-    for(j=0; j<=gmg[lev+1].ny; j++)
-      r[2*k][2*j][gmg[lev].nx] = u[k][j][gmg[lev+1].nx];
-  
-  for(k=0; k<=gmg[lev+1].nz; k++)
-    for(i=0; i<=gmg[lev+1].nx; i++)
-      r[2*k][gmg[lev].ny][2*i] = u[k][gmg[lev+1].ny][i];
-
-  for(j=0; j<=gmg[lev+1].ny; j++)
-    for(i=0; i<=gmg[lev+1].nx; i++)
-      r[gmg[lev].nz][2*j][2*i] = u[gmg[lev+1].nz][j][i];
   
 }
 
@@ -214,16 +202,6 @@ void restriction(gmg_t *gmg, int lev)
 
 }
 
-void correction(gmg_t *gmg, int lev)
-{
-  int i, j, k;
-
-  for(k=1; k<gmg[lev].nz; k++)
-    for(j=1; j<gmg[lev].ny; j++)
-      for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[k][j][i] += gmg[lev].r[k][j][i];//correct u=u+r at interior without boundaries
-
-}
 
 //multigrid V-cycle
 void v_cycle(gmg_t *gmg, int lev)
@@ -248,7 +226,6 @@ void v_cycle(gmg_t *gmg, int lev)
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    correction(gmg, lev);
   }
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
@@ -277,7 +254,6 @@ void f_cycle(gmg_t *gmg, int lev)
     memset(&gmg[lev+1].u[0][0][0], 0, n*sizeof(double));
     f_cycle(gmg, lev+1);
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    correction(gmg, lev);
   }
   v_cycle(gmg, lev);// another v-cycle at (lev+1)-th level
 }

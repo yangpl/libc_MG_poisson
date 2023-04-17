@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
   if(!getparint("nz", &nz)) nz = 128;/* dimension in z */
   if(!getparint("method", &method)) method = 0;
   if(!getparint("niter", &niter)) niter = 10;
-  if(!getparint("mgopt", &mgopt)) mgopt = 0;
+  if(!getparint("mgopt", &mgopt)) mgopt = 1;
   if(!getpardouble("tol", &tol)) tol = 1e-6;
   if(!getparint("nrestart", &nrestart)) nrestart = 10;/* GMRES restarts every nrestart steps  */
   

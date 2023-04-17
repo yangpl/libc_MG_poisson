@@ -215,9 +215,12 @@ void v_cycle(gmg_t *gmg, int lev)
     printf("residual=%e\n", rnorm);
   }
 
-  for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
-
-  if(lev<lmax-1){
+  if(lev==lmax-1){
+    //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
+    //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
+    smoothing(gmg, lev, 0);
+  }else{
+    for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
     residual(gmg, lev);//residual r=f-Au at lev-th lev    
     restriction(gmg, lev);//restrict r at lev-th lev to gmg[lev+1].f 
 
@@ -226,11 +229,8 @@ void v_cycle(gmg_t *gmg, int lev)
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
+    for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
   }
-  //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
-  //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
-  
-  for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
 }
 
 //multigrid F-cycle

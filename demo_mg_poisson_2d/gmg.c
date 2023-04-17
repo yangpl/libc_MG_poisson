@@ -89,41 +89,23 @@ void residual(gmg_t *gmg, int lev)
   }
 }
 
-//interpolate u from (lev+1) to lev-th level
+//interpolate e from (lev+1) to lev-th level to correct u
 void prolongation(gmg_t *gmg, int lev)
 {
-  double **u, **r;
+  double **e, **u;
   int i, j;
 
-  r = gmg[lev].r;
-  memset(&r[0][0], 0, (gmg[lev].nx+1)*(gmg[lev].ny+1)*sizeof(double));
-  u = gmg[lev+1].u;
+  u = gmg[lev].u;
+  e = gmg[lev+1].u;
   for(j=1; j<gmg[lev+1].ny; j++){
     for(i=1; i<gmg[lev+1].nx; i++){
-      r[2*j][2*i] = u[j][i];
-      r[2*j][2*i+1] = 0.5*(u[j][i] + u[j][i+1]);
-      r[2*j+1][2*i] = 0.5*(u[j][i] + u[j+1][i]);
-      r[2*j+1][2*i+1] = 0.25*(u[j][i] + u[j][i+1] + u[j+1][i] + u[j+1][i+1]);
-
-      /*
-      r[2*j-1][2*i-1] += 0.25*u[j][i];
-      r[2*j-1][2*i+1] += 0.25*u[j][i];
-      r[2*j+1][2*i-1] += 0.25*u[j][i];
-      r[2*j+1][2*i+1] += 0.25*u[j][i];
-
-      r[2*j][2*i-1] += 0.5*u[j][i];
-      r[2*j][2*i+1] += 0.5*u[j][i];
-      r[2*j-1][2*i] += 0.5*u[j][i];
-      r[2*j+1][2*i] += 0.5*u[j][i];
-
-      r[2*j][2*i] += u[j][i];
-      */
+      u[2*j][2*i] += e[j][i];
+      u[2*j][2*i+1] += 0.5*(e[j][i] + e[j][i+1]);
+      u[2*j+1][2*i] += 0.5*(e[j][i] + e[j+1][i]);
+      u[2*j+1][2*i+1] += 0.25*(e[j][i] + e[j][i+1] + e[j+1][i] + e[j+1][i+1]);
     }
   }
 
-  //handle boundaries
-  for(i=0; i<gmg[lev+1].nx; i++) r[gmg[lev].ny][2*i] = u[gmg[lev+1].ny][i];
-  for(j=0; j<gmg[lev+1].ny; j++) r[2*j][gmg[lev].nx] = u[j][gmg[lev+1].nx];
 }
 
 //restrict r from lev to (lev+1)-th lev: fine to coarse grid
@@ -141,11 +123,6 @@ void restriction(gmg_t *gmg, int lev)
       tmp1 = r[2*j-1][2*i-1] + r[2*j-1][2*i+1] + r[2*j+1][2*i-1] + r[2*j+1][2*i+1];
       tmp2 = r[2*j][2*i-1] + r[2*j][2*i+1] + r[2*j-1][2*i] + r[2*j+1][2*i];
       f[j][i] = (tmp1 + 2*tmp2 + 4*r[2*j][2*i])/16.;
-      /*
-      f[j][i] += 0.0625*(r[2*j-1][2*i-1] + r[2*j-1][2*i+1] + r[2*j+1][2*i-1] + r[2*j+1][2*i+1]);
-      f[j][i] += 0.125*(r[2*j][2*i-1] + r[2*j][2*i+1] + r[2*j-1][2*i] + r[2*j+1][2*i]);
-      f[j][i] += 0.25*r[2*j][2*i];
-      */
     }
   }
 
@@ -160,16 +137,6 @@ void restriction(gmg_t *gmg, int lev)
   }
 }
 
-void correction(gmg_t *gmg, int lev)
-{
-  int i, j;
-  
-  for(j=1; j<gmg[lev].ny; j++)
-      for(i=1; i<gmg[lev].nx; i++)
-	gmg[lev].u[j][i] += gmg[lev].r[j][i];//correct u=u+r at interior without boundaries
-
-}
-
 //multigrid V-cycle
 void v_cycle(gmg_t *gmg, int lev)
 {
@@ -180,7 +147,6 @@ void v_cycle(gmg_t *gmg, int lev)
     rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
     printf("residual=%e\n", rnorm);
   }    
-
   for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
 
   if(lev<lmax-1){
@@ -191,7 +157,6 @@ void v_cycle(gmg_t *gmg, int lev)
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    correction(gmg, lev);
   }
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
@@ -210,13 +175,11 @@ void f_cycle(gmg_t *gmg, int lev)
       rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
       printf("residual=%e\n", rnorm);
     }
-
     restriction(gmg, lev);//restrict r at lev-th lev to f at (lev+1)-th level
 
     memset(&gmg[lev+1].u[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
     f_cycle(gmg, lev+1);
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    correction(gmg, lev);
   }
   v_cycle(gmg, lev);// another v-cycle at (lev+1)-th level
 }

@@ -128,12 +128,12 @@ void restriction(gmg_t *gmg, int lev)
 
   //use exactly the same value from fine to coarse grid at boundaries
   for(i=0; i<=gmg[lev+1].nx; i++) {
-    f[0][i] = r[0][i];
-    f[gmg[lev+1].ny][i] = r[gmg[lev].ny][i];
+    f[0][i] = r[0][2*i];
+    f[gmg[lev+1].ny][i] = r[gmg[lev].ny][2*i];
   }
   for(j=0; j<=gmg[lev+1].ny; j++) {
-    f[j][0] = r[j][0];
-    f[j][gmg[lev+1].nx] = r[j][gmg[lev].nx];
+    f[j][0] = r[2*j][0];
+    f[j][gmg[lev+1].nx] = r[2*j][gmg[lev].nx];
   }
 }
 

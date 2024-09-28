@@ -234,21 +234,17 @@ void restriction(gmg_t *gmg, int lev) //exact adjoint of prolongation
 void v_cycle(gmg_t *gmg, int lev)
 {
   int i, n;
-  
-  if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
-    residual(gmg, lev);//residual r=f-Au at lev-th lev    
-    n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
-    rnorm = sqrt(inner_product(n, &gmg[lev].r[0][0][0], &gmg[lev].r[0][0][0]));      
-    printf("residual=%e\n", rnorm);
-  }
 
-  if(lev==lmax-1){
-    //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
-    //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
-    smoothing(gmg, lev, 0);
-  }else{
-    for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
+  //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
+  //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
+  for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
+  if(lev<lmax-1){
     residual(gmg, lev);//residual r=f-Au at lev-th lev    
+    if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
+      n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
+      rnorm = sqrt(inner_product(n, &gmg[lev].r[0][0][0], &gmg[lev].r[0][0][0]));      
+      printf("residual=%e\n", rnorm);
+    }
     restriction(gmg, lev);//restrict r at lev-th lev to gmg[lev+1].f 
 
     n = (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*(gmg[lev+1].nz+1);
@@ -256,8 +252,8 @@ void v_cycle(gmg_t *gmg, int lev)
     v_cycle(gmg, lev+1);// another v-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
   }
+  for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
 }
 
 //multigrid F-cycle

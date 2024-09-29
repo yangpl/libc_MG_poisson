@@ -42,7 +42,7 @@ double inner_product(int n, double *x, double *y)
 
 //relaxation/smoothing step for multigrid
 //Symmetric Gauss-Seidel for swtiching even and odd indices
-void smoothing(gmg_t *gmg, int lev, int iter)
+void smoothing(gmg_t *gmg, int lev)
 {
   int i, j, k;
   double vol, a, tmp1, tmp2, tmp3, _dx2, _dy2, _dz2;
@@ -56,11 +56,8 @@ void smoothing(gmg_t *gmg, int lev, int iter)
   a = 2.*_dx2 + 2.*_dy2 + 2.*_dz2;
   vol = gmg[lev].dx*gmg[lev].dy*gmg[lev].dz;
   for(k=1; k<gmg[lev].nz; k++){
-    if(iter%2==1) k = gmg[lev].nz-k;
     for(j=1; j<gmg[lev].ny; j++){
-      if(iter%2==1) j = gmg[lev].ny-j;
       for(i=1; i<gmg[lev].nx; i++){
-	if(iter%2==1) i = gmg[lev].nx-i;
 	tmp1 = (u[k][j][i+1] + u[k][j][i-1])*_dx2;
 	tmp2 = (u[k][j+1][i] + u[k][j-1][i])*_dy2;
 	tmp3 = (u[k+1][j][i] + u[k-1][j][i])*_dz2;
@@ -169,7 +166,6 @@ void restriction(gmg_t *gmg, int lev) //exact adjoint of prolongation
   int ip1, jp1, kp1;
   int ii, jj, kk;
   int iip1, jjp1, kkp1;
-  double tmp1, tmp2, tmp3;
   double ***f, ***r;
 
   //full weighting operator for restriction
@@ -237,7 +233,7 @@ void v_cycle(gmg_t *gmg, int lev)
 
   //if lev==lmax-1, then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
   //direct solve is equivalent to smoothing at center point, one post-smoothing will do the joib
-  for(i=0; i<v1; i++) smoothing(gmg, lev, i);//pre-smoothing of u based on u,f at lev-th level
+  for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
   if(lev<lmax-1){
     residual(gmg, lev);//residual r=f-Au at lev-th lev    
     if(cycleopt==1 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
@@ -253,7 +249,7 @@ void v_cycle(gmg_t *gmg, int lev)
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
   }
-  for(i=0; i<v2; i++) smoothing(gmg, lev, i);//post-smoothing
+  for(i=0; i<v2; i++) smoothing(gmg, lev);//post-smoothing
 }
 
 //multigrid F-cycle

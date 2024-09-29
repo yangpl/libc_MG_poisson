@@ -15,8 +15,8 @@ void gmg_close();
   
 int main(int argc, char *argv[])
 {
-  int nx, ny, nz, niter, n, verb;
-  double dx, dy, dz, tol;
+  int nx, ny, nz, n, verb;
+  double dx, dy, dz;
   int i, j, k;
   double *x, *b;
   
@@ -26,8 +26,6 @@ int main(int argc, char *argv[])
   if(!getparint("nx", &nx)) nx = 128;/* dimension in x */
   if(!getparint("ny", &ny)) ny = 128;/* dimension in y */
   if(!getparint("nz", &nz)) nz = 128;/* dimension in z */
-  if(!getparint("niter", &niter)) niter = 10;
-  if(!getpardouble("tol", &tol)) tol = 1e-6;
   
   dx = 1./nx;
   dy = 1./ny;

@@ -339,12 +339,9 @@ int main(int argc, char* argv[])
       g[l].r = alloc1double(g[l].nx+1);
     }
 
-    if(strcmp(mgcycle,"V")==0) 
-      v_cycle(lmax, 0, g, &res);
-    else if(strcmp(mgcycle,"W")==0) 
-      w_cycle(lmax, 0, g, &res);
-    else if(strcmp(mgcycle,"F")==0) 
-      f_cycle(lmax, 0, g, &res);
+    if(strcmp(mgcycle,"V")==0) v_cycle(lmax, 0, g, &res);
+    if(strcmp(mgcycle,"W")==0) w_cycle(lmax, 0, g, &res);
+    if(strcmp(mgcycle,"F")==0) f_cycle(lmax, 0, g, &res);
 
     for(l=1; l<lmax; l++){
       free(g[l].u);

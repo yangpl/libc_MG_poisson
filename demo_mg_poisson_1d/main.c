@@ -113,11 +113,6 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
 
-  if(level==0) {
-    //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx, g[level].f, g[level].u, g[level].r);
-    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
-  }
 
 
   //------------------------------------------------------------
@@ -128,7 +123,8 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
 
     //compute residual r^h = f^h-A^h u^h
     residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
-
+    if(level==0) *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
+    
     //restriction f^2h = I_h^2h r^h
     restriction(g[l].nx, g[l].r, g[l+1].nx, g[l+1].f);
 
@@ -139,17 +135,7 @@ void v_cycle(int lmax, int level, grid1d *g, double *res)
   //-------------------------------------------------------------
   //2. direct solve at coarsest grid level, now l=lmax-1
   //pre-smoothing relaxation: v1 sweeps
-  for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
-  //dirct solve at coarsest grid A u=f
-  if(g[l].nx==2) {
-    //exactly solve the problem directly at coarsest grid (nx=2, nx+1=3)
-    //all points are boundary points except for a single interior point.
-    //(u[i-1]-2.*u[i] +u[i+1])/(dx*dx)= f[i]; i=1
-    i=1;
-    g[l].u[i] = 0.5*( g[l].u[i-1]-g[l].u[i+1] - g[l].dx*g[l].dx*g[l].f[i]);
-  }
-  //post-smoothing relaxation: v2 sweeps
-  for(i=1; i<=v2; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
+  relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
   //-------------------------------------------------------------
   //3. from coarse to fine grid step by step
@@ -169,11 +155,6 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
 
-  if(level==0) {
-    //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, g[level].r);
-    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
-  }
 
   //-------------------------------------------------------------
   //1. from fine to coarse grid step by step
@@ -182,7 +163,8 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
     for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
     //compute residual r^h = f^h-A^h u^h
-    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
+    residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);  
+    if(level==0) *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
 
     //=====================================================
     //start a V cycle based on the new solution at level l
@@ -198,18 +180,7 @@ void w_cycle(int lmax, int level, grid1d *g, double *res)
 
   //------------------------------------------------------------
   //2. direct solve at coarsest grid level, now l=lmax-1
-  //pre-smoothing relaxation: v1 sweeps
-  for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
-  //dirct solve at coarsest grid A u=f
-  if(g[l].nx==2) {
-    //exactly solve the problem directly at coarsest grid (nx=2, nx+1=3)
-    //all points are boundary points except for a single interior point.
-    //(u[i-1]-2.*u[i] +u[i+1])/(dx*dx)= f[i]; i=1
-    i=1;
-    g[l].u[i] = 0.5*( g[l].u[i-1]-g[l].u[i+1] - g[l].dx*g[l].dx*g[l].f[i]);
-  }
-  //post-smoothing relaxation: v2 sweeps
-  for(i=1; i<=v2; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
+  relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
 
   //-------------------------------------------------------------
   //3. from coarse grid to fine grid step by step
@@ -263,18 +234,8 @@ void f_cycle(int lmax, int level, grid1d *g, double *res)
   //------------------------------------------------------------
   //2. direct solve at coarsest grid level, now l=lmax-1
   //pre-smoothing relaxation: v1 sweeps
-  for(i=1; i<=v1; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
-  //dirct solve at coarsest grid A u=f
-  if(g[l].nx==2) {
-    //exactly solve the problem directly at coarsest grid (nx=2, nx+1=3)
-    //all points are boundary points except for a single interior point.
-    //(u[i-1]-2.*u[i] +u[i+1])/(dx*dx)= f[i]; i=1
-    i=1;
-    g[l].u[i] = 0.5*( g[l].u[i-1]-g[l].u[i+1] - g[l].dx*g[l].dx*g[l].f[i]);
-  }
-  //post-smoothing relaxation: v2 sweeps
-  for(i=1; i<=v2; i++) relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
-
+  relax(g[l].nx, g[l].dx, g[l].f, g[l].u);
+  
   //-------------------------------------------------------------
   //3. from coarse grid to fine grid step by step
   for(l=lmax-2; l>=level; l--){

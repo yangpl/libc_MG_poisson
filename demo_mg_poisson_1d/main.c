@@ -204,13 +204,6 @@ void f_cycle(int lmax, int level, grid1d *g, double *res)
 {
   int i, l;
 
-  if(level==0) {
-    //return residual at finest grid for computing convergence rate
-    //compute residual r^h = f^h-A^h u^h
-    residual(g[level].nx, g[level].dx,g[level].f, g[level].u, g[level].r);
-    *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
-  }
-
   //-------------------------------------------------------------
   //1. from fine to coarse grid step by step
   for(l=level; l<=lmax-2; l++){
@@ -219,6 +212,7 @@ void f_cycle(int lmax, int level, grid1d *g, double *res)
 
     //compute residual r^h = f^h-A^h u^h
     residual(g[l].nx, g[l].dx,g[l].f, g[l].u, g[l].r);
+    if(level==0) *res = sqrt(dotprod(g[level].nx, g[level].r, g[level].r));
 
     //restriction f^2h = I_h^2h r^h
     restriction(g[l].nx, g[l].r, g[l+1].nx, g[l+1].f);

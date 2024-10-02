@@ -2,10 +2,6 @@
  * Demo for solving 1D possion equation using multigrid method
  * Author: Pengliang Yang, ypl.2100@gmail.com 
  */
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-
 #include "cstd.h"
 
 #define PI 3.14159265
@@ -327,7 +323,6 @@ int main(int argc, char* argv[])
   g[0].r = alloc1double(nx+1);
   memcpy(g[0].u, u, (nx+1)*sizeof(double));
   memcpy(g[0].f, f, (nx+1)*sizeof(double));
-
 
   FILE *fp=fopen("iterate.txt","w");
   for(k=0; k<niter; k++){

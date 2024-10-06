@@ -164,19 +164,13 @@ void w_cycle(gmg_t *gmg, int lev)
 {
   int i;
   
-  if(cycleopt==3 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
+  for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
+  if(lev<lmax-1){
     residual(gmg, lev);//residual r=f-Au at lev-th lev
-    rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
-    printf("residual=%e\n", rnorm);
-  }    
-
-  if(lev==lmax-1){
-    //then nx=ny=2, grid size=3*3, only 1 point at the center is unknwn
-    //direct solve is equivalent to smoothing at center point
-    smoothing(gmg, lev);
-  }else{
-    for(i=0; i<v1; i++) smoothing(gmg, lev);//pre-smoothing of u based on u,f at lev-th level
-    residual(gmg, lev);//residual r=f-Au at lev-th lev
+    if(cycleopt==3 && lev==0){//compute the norm of the residual vector at the beginning of each iteration
+      rnorm = sqrt(inner_product((gmg[lev].nx+1)*(gmg[lev].ny+1), &gmg[lev].r[0][0], &gmg[lev].r[0][0]));
+      printf("residual=%e\n", rnorm);
+    }    
     restriction(gmg, lev);//restrict r at lev-th lev to gmg[lev+1].f 
 
     memset(&gmg[lev+1].u[0][0], 0, (gmg[lev+1].nx+1)*(gmg[lev+1].ny+1)*sizeof(double));
@@ -184,8 +178,8 @@ void w_cycle(gmg_t *gmg, int lev)
     w_cycle(gmg, lev+1);// another w-cycle at (lev+1)-th level
 
     prolongation(gmg, lev);//interpolate r^h=gmg[lev+1].u to r^2h from (lev+1) to lev-th level
-    for(i=0; i<v2; i++) smoothing(gmg, lev);//post-smoothing
   }
+  for(i=0; i<v2; i++) smoothing(gmg, lev);//post-smoothing
 }
 
 //multigrid F-cycle

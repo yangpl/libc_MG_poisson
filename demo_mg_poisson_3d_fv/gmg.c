@@ -71,7 +71,7 @@ void smoothing(gmg_t *gmg, int lev)
 //compute residual r=f-Au
 void residual(gmg_t *gmg, int lev)
 {
-  int i, j, k;
+  int i, j, k, n;
   double vol, _dx2, _dy2, _dz2, tmp1, tmp2, tmp3;
   double ***u, ***f, ***r;
   
@@ -81,6 +81,9 @@ void residual(gmg_t *gmg, int lev)
   u = gmg[lev].u;
   f = gmg[lev].f;
   r = gmg[lev].r;
+  n = (gmg[lev].nx+1)*(gmg[lev].ny+1)*(gmg[lev].nz+1);
+  memcpy(&r[0][0][0], &f[0][0][0], n*sizeof(double));
+  //boundary values are copied from f, only update interior part
   vol = gmg[lev].dx*gmg[lev].dy*gmg[lev].dz;
   for(k=1; k<gmg[lev].nz; k++){
     for(j=1; j<gmg[lev].ny; j++){
@@ -88,29 +91,8 @@ void residual(gmg_t *gmg, int lev)
 	tmp1 = (u[k][j][i+1] - 2.*u[k][j][i] + u[k][j][i-1])*_dx2;
 	tmp2 = (u[k][j+1][i] - 2.*u[k][j][i] + u[k][j-1][i])*_dy2;
 	tmp3 = (u[k+1][j][i] - 2.*u[k][j][i] + u[k-1][j][i])*_dz2;
-	r[k][j][i] = f[k][j][i] + vol*(tmp1 + tmp2 + tmp3);
+	r[k][j][i] -= - vol*(tmp1 + tmp2 + tmp3);
       }
-    }
-  }
-
-  for(k=0; k<=gmg[lev].nz; k++){
-    for(j=0; j<=gmg[lev].ny; j++) {
-      r[k][j][0] = 0.;
-      r[k][j][gmg[lev].nx] = 0.;
-    }
-  }
-
-  for(k=0; k<=gmg[lev].nz; k++){
-    for(i=0; i<=gmg[lev].nx; i++){
-      r[k][0][i] = 0.;
-      r[k][gmg[lev].ny][i] = 0.;
-    }
-  }
-
-  for(j=0; j<=gmg[lev].ny; j++){
-    for(i=0; i<=gmg[lev].nx; i++){
-      r[0][j][i] = 0.;
-      r[gmg[lev].nz][j][i] = 0.;
     }
   }
   
@@ -323,13 +305,15 @@ void gmg_close()
 void gmg_apply(int n, double *b, double *x)
 {
   int i, j, k, iter;
+  double vol;
 
   memcpy(&gmg[0].f[0][0][0], b, n*sizeof(double));
   memset(&gmg[0].u[0][0][0], 0, n*sizeof(double));
+  vol = gmg[0].dx*gmg[0].dy*gmg[0].dz;
   for(k=0; k<=gmg[0].nz; k++){
     for(j=0; j<=gmg[0].ny; j++){
       for(i=0; i<=gmg[0].nx; i++){
-	gmg[0].f[k][j][i] *= gmg[0].dx*gmg[0].dy*gmg[0].dz;
+	gmg[0].f[k][j][i] *= vol;
       }
     }
   }

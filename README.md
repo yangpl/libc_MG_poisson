@@ -18,3 +18,5 @@ Contents:
 * demo_gmg_amg_poisson: implemented my own GMG while calling sxamg for AMG
 
 * demo_mg_poisson_1/2/3d: my own implementation of both GMG and AMG. All of them are working nicely.
+
+* demo_cg_poisson_3d: 3D poisson equation solved using conjugate gradient (CG) method 

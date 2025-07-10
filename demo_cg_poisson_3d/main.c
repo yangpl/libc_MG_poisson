@@ -13,21 +13,19 @@
 
 typedef void (*op_t)(int, double*, double*); //define type for linear operator
 
-
-void Acoo_init(int nx, int ny, double dx, double dy);
-void Acoo_apply(int n, double *x, double *y);
-void Acoo_close();
-
-void Acsr_init(int nx, int ny, int nz, double dx, double dy, double dz);
+void Acsr_init(csr_t *A, int nx, int ny, int nz, double dx, double dy, double dz);
 void Acsr_apply(int n, double *x, double *y);
+void Acsr_close();
 
+void matrix_init(int nx, int ny, int nz, double dx, double dy, double dz);
+void matrix_apply(int n, double *x, double *y);
 
 double dotprod(int n, double *a, double *b);
 void solve_cg(int n, double *x, double *b, op_t Aop, int niter, double tol, int verb);
   
 int main(int argc, char *argv[])
 {
-  int nx, ny, nz, method, niter, n, nrestart, mgopt, verb;
+  int nx, ny, nz, niter, n, nrestart, verb;
   double dx, dy, dz, x2, y2, z2, tol;
   int i, j, k, kk;
   double *x, *xt, *b;
@@ -40,9 +38,7 @@ int main(int argc, char *argv[])
   if(!getparint("nx", &nx)) nx = 128;/* dimension in x */
   if(!getparint("ny", &ny)) ny = 128;/* dimension in y */
   if(!getparint("nz", &nz)) nz = 128;/* dimension in z */
-  if(!getparint("method", &method)) method = 0;
-  if(!getparint("niter", &niter)) niter = 300;
-  if(!getparint("mgopt", &mgopt)) mgopt = 1;
+  if(!getparint("niter", &niter)) niter = 1000;
   if(!getpardouble("tol", &tol)) tol = 1e-6;
   if(!getparint("nrestart", &nrestart)) nrestart = 10;/* GMRES restarts every nrestart steps  */
   
@@ -50,10 +46,6 @@ int main(int argc, char *argv[])
   dy = 1./ny;
   dz = 1./nz;
   n = (nx+1)*(ny+1)*(nz+1);
-
-  printf("method=%d\n", method);
-  printf("niter=%d\n", niter);
-  printf("mgopt=%d\n", mgopt);
   
   b = alloc1double(n);
   x = alloc1double(n);
@@ -73,12 +65,20 @@ int main(int argc, char *argv[])
       }
     }
   }
-  memset(x, 0, n*sizeof(double));//x=0 as initialization
-  Acsr_init(nx, ny, nz, dx, dy, dz);
-  Acsr_apply(n, xt, b);//b=A*xt
-
-  solve_cg(n, x, b, Acsr_apply, niter, tol, verb);
   
+  
+  printf("CSR matrix\n");
+  memset(x, 0, n*sizeof(double));//x=0 as initialization
+  Acsr_init(&A, nx, ny, nz, dx, dy, dz);
+  Acsr_apply(n, xt, b);//b=A*xt
+  solve_cg(n, x, b, Acsr_apply, niter, tol, verb);
+
+  printf("matrix free\n");
+  memset(x, 0, n*sizeof(double));//x=0 as initialization
+  matrix_init(nx, ny, nz, dx, dy, dz);
+  matrix_apply(n, xt, b);//b=A*xt
+  solve_cg(n, x, b, matrix_apply, niter, tol, verb);
+
   /* output true signal and reconstructed one */
   fp = fopen("result.txt", "w");
   fprintf(fp, "x_true \t x_rec \n");
@@ -88,6 +88,6 @@ int main(int argc, char *argv[])
   free1double(b);
   free1double(x);
   free1double(xt);
-
+  
   return 0;
 }

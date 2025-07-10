@@ -1,64 +1,128 @@
 #include "cstd.h"
 #include "sparse.h"
 
-double dx, dy, dz;
-int nx, ny, nz;
+csr_t *A;
+
+#define id(i,j,k) (i + (nx+1)*(j + (ny+1)*(k)))
 
 //build matrix in coo format for laplace operator A=-Dx^2 - Dy^2 - Dz^2
-void Acsr_init(int nx_, int ny_, int nz_, double dx_, double dy_, double dz_)
+void Acsr_init(csr_t *A_, int nx, int ny, int nz, double dx, double dy, double dz)
 {
-  nx = nx_;
-  ny = ny_;
-  nz = nz_;
-  dx = dx_;
-  dy = dy_;
-  dz = dz_;
+  int i, j, k, kk, row_ind;
+  double _dx2, _dy2, _dz2;
+  
+  //count the number of nonzeros in sparse banded matrix A
+  kk = 0;
+  for(k=0; k<=nz; k++){
+    for(j=0; j<=ny; j++){
+      for(i=0; i<=nx; i++){
+	//the diagonal element A(i,j)
+	kk++;
+      
+	//the off-diagonal element
+	if(i-1>=0){//element A(i-1,j,k)
+	  kk++;	
+	}
+	if(i+1<=nx){//element A(i+1,j,k)
+	  kk++;
+	}
+	if(j-1>=0){//element A(i,j-1,k)
+	  kk++;	
+	}
+	if(j+1<=ny){//element A(i,j+1,k)
+	  kk++;
+	}
+	if(k-1>=0){//element A(i,j,k-1)
+	  kk++;	
+	}
+	if(k+1<=nz){//element A(i,j,k+1)
+	  kk++;
+	}
+      
+      }
+    }
+  }
+  A = A_;
+  A->nnz = kk;//number of non-zeros
+  A->nrow = (nx+1)*(ny+1)*(nz+1);
+  A->ncol = (nx+1)*(ny+1)*(nz+1);
+  
+  A->row_ptr = alloc1int(A->nrow+1);
+  A->col_ind = alloc1int(A->nnz);
+  A->val = alloc1double(A->nnz);
+
+  _dx2 = 1./(dx*dx);
+  _dy2 = 1./(dy*dy);
+  _dz2 = 1./(dz*dz);
+  kk = 0;
+  A->row_ptr[0] = kk;
+  for(k=0; k<=nz; k++){
+    for(j=0; j<=ny; j++){
+      for(i=0; i<=nx; i++){
+	//the diagonal element A(i,j,k)
+	A->val[kk] = 2.*(_dx2 + _dy2 + _dz2);
+	A->col_ind[kk] = id(i,j,k);
+	kk++;
+      
+	//the off-diagonal element
+	if(i-1>=0){//element A(i-1,j,k)
+	  A->val[kk] = -_dx2;
+	  A->col_ind[kk] = id(i-1,j,k);
+	  kk++;	
+	}
+	if(i+1<=nx){//element A(i+1,j,k)
+	  A->val[kk] = -_dx2;
+	  A->col_ind[kk] = id(i+1,j,k);
+	  kk++;
+	}
+	if(j-1>=0){//element A(i,j-1,k)
+	  A->val[kk] = -_dy2;
+	  A->col_ind[kk] = id(i,j-1,k);
+	  kk++;	
+	}
+	if(j+1<=ny){//element A(i,j+1,k)
+	  A->val[kk] = -_dy2;
+	  A->col_ind[kk] = id(i,j+1,k);
+	  kk++;
+	}
+	if(k-1>=0){//element A(i,j,k-1)
+	  A->val[kk] = -_dz2;
+	  A->col_ind[kk] = id(i,j,k-1);
+	  kk++;	
+	}
+	if(k+1<=nz){//element A(i,j,k+1)
+	  A->val[kk] = -_dz2;
+	  A->col_ind[kk] = id(i,j,k+1);
+	  kk++;
+	}
+      
+	row_ind = id(i,j,k);
+	A->row_ptr[row_ind+1] = kk;
+      }
+    }
+  }
+  
+}
+
+
+void Acsr_close()
+{
+  free1int(A->row_ptr);
+  free1int(A->col_ind);
+  free1double(A->val);
 }
 
 //compute y=Ax by applying operator A in coo format
 void Acsr_apply(int n, double *x, double *y)
 {
   int i, j, k;
-  int ip1, jp1, kp1;
-  int im1, jm1, km1;
-  double s1, s2, s3;
 
-#define id(i,j,k) (i+(nx+1)*(j + (ny+1)*(k)))
-  
-  memset(y, 0, n*sizeof(double));
-  for(k=0; k<=nz; ++k){
-    kp1 = k+1;
-    km1 = k-1;
-    for(j=0; j<=ny; ++j){
-      jp1 = j+1;
-      jm1 = j-1;
-      for(i=0; i<=nx; ++i){
-	ip1 = i+1;
-	im1 = i-1;
-	
-	/* y[id(i,j,k)] += (x[id(ip1,j,k)]-2*x[id(i,j,k)]+x[id(im1,j,k)])/(dx*dx); */
-	/* y[id(i,j,k)] += (x[id(i,jp1,k)]-2*x[id(i,j,k)]+x[id(i,jm1,k)])/(dy*dy); */
-	/* y[id(i,j,k)] += (x[id(i,j,kp1)]-2*x[id(i,j,k)]+x[id(i,j,km1)])/(dz*dz); */
-
-	s1 = -2*x[id(i,j,k)];
-	if(ip1<=nx) s1 += x[id(ip1,j,k)];
-	if(im1>=0) s1 += x[id(im1,j,k)];
-	s1 /= (dx*dx);
-
-	s2 = -2*x[id(i,j,k)];
-	if(jp1<=ny) s2 += x[id(i,jp1,k)];
-	if(jm1>=0) s2 += x[id(i,jm1,k)];
-	s2 /= (dy*dy);
-
-	s3 = -2*x[id(i,j,k)];
-	if(kp1<=nz) s3 += x[id(i,j,kp1)];
-	if(km1>=0) s3 += x[id(i,j,km1)];
-	s3 /= (dz*dz);
-
-	y[id(i,j,k)] += s1 + s2 + s3;
-      }
+  for(i=0; i<A->nrow; i++){
+    y[i] = 0;
+    for(k=A->row_ptr[i]; k<A->row_ptr[i+1]; k++){
+      j = A->col_ind[k];
+      y[i] += A->val[k]*x[j];
     }
   }
-#undef id
-  
+
 }

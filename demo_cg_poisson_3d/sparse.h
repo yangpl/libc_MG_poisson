@@ -18,13 +18,4 @@ typedef struct{
   double *val;
 }csr_t;
 
-typedef struct{
-  int nrow;
-  int ncol;
-  int nnz;
-  int *row_ptr;
-  int *col_ind;
-  int *val;
-}icsr_t;//csr for integer array
-
 #endif

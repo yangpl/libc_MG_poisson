@@ -4,9 +4,17 @@ import numpy as np
 
 y1, y2= np.loadtxt('result.txt', skiprows=1, unpack=True) #skip 0 lines
 x = range(y1.size)
+x_true = y1.reshape([129, 129])
+x_rec= y2.reshape([129, 129])
 
-plt.plot(x, y1, label='x_true')
-plt.plot(x, y2, label='x_rec')
+plt.figure(figsize=(10, 4)) 
+plt.subplot(121)
+plt.imshow(x_true)
+plt.colorbar()
+
+plt.subplot(122)
+plt.imshow(x_rec-x_true)
+plt.colorbar()
 
 plt.legend()
 plt.show()

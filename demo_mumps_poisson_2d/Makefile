@@ -1,41 +1,51 @@
-#compiler and  option
-FC=mpiifort
-OPTF=-C -g -nofor-main
+# Compiler and options
+FC = mpiifx
+CC = mpiicx
 
-#Preprocessor defs for calling Fortran from C (-DAdd_ or -DAdd__ or -DUPPER)
-CC = mpiicc
+# Flags - removed -C (check all) during linking as it can cause issues
+FFLAGS = -g -nofor-main
 CFLAGS = -O3 -qopenmp -DAdd_
 
-mumps=$(HOME)/Install/MUMPS_5.3.4
+# MUMPS paths
+mumps = $(HOME)/Install/MUMPS_5.3.4
 pord = $(mumps)/PORD
-metis=$(HOME)/Install/metis-5.1.0/metis
+# metis = $(HOME)/Install/metis-5.1.0
 
-LMKL= -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+# MKL libraries - fixed order
+LMKL = -L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
 
+# PORD includes and libraries
 IPORD = -I$(pord)/include/
 LPORD = -L$(pord)/lib/ -lpord
-LMETIS = -L$(metis)/lib -lmetis
-IMETIS = -I$(metis)/include
-LMUMPS = -L$(mumps)/lib -lcmumps -ldmumps -lmumps_common
-IMUMPS = -I$(mumps)/include
 
+# MUMPS includes and libraries - CORRECTED ORDER
+IMUMPS = -I$(mumps)/include
+# Note: mumps_common must come before dmumps/cmumps
+LMUMPS = -L$(mumps)/lib -ldmumps -lcmumps -lmumps_common
+
+# METIS (uncomment if needed)
+# IMETIS = -I$(metis)/include
+# LMETIS = -L$(metis)/lib -lmetis
 
 #===========================================================
 BIN = .
 
-LIB=$(LMUMPS) $(LMETIS) $(LMKL) $(LPORD)  -lm -qopenmp -pthread
-INC=$(IMUMPS) $(IMETIS) $(IPORD)
+# LIBRARY ORDER IS CRITICAL - CORRECTED
+# Order: MUMPS libraries -> PORD -> MKL -> OpenMP -> system libraries
+LIB = $(LMUMPS) $(LPORD) $(LMKL) -liomp5 -lpthread -lm -ldl
+INC = $(IMUMPS) $(IPORD)  # $(IMETIS) if using METIS
+
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)
 
 all: clean main
 
-##it has to be linked using mpiifort because main routines of MUMPS are in Fortran.
-main:	$(OBJ)
-	$(FC) $(OPTF) -o $(BIN)/main $(OBJ) $(LIB)
+# Main target - removed -C from linking, added OpenMP flag
+main: $(OBJ)
+	$(FC) $(FFLAGS) -qopenmp -o $(BIN)/main $(OBJ) $(LIB)
 
-%.o: %.c 
-	$(CC) $(CFLAGS) -c $^ -o $@ $(INC) $(LIB)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@ $(INC)
 
 clean:
 	find . -name "*.o"   -exec rm {} \;

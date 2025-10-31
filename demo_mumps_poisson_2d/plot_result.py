@@ -16,5 +16,6 @@ plt.subplot(122)
 plt.imshow(x_rec-x_true)
 plt.colorbar()
 
+plt.tight_layout()
 plt.legend()
 plt.show()

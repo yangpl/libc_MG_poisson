@@ -1,48 +1,48 @@
-# Compiler and options
-FC = mpiifx
-CC = mpiicx
+# GNU Compiler and options, assume metis,scotch,lapack,scalapack have been install using sudo apt-get install libmetis-dev libparmetis-dev libscotch-dev libptscotch-dev libatlas-base-dev openmpi-bin libopenmpi-dev liblapack-dev libscalapack-openmpi-dev
+FC = mpif90 
+CC = mpicc 
 
 # Flags - removed -C (check all) during linking as it can cause issues
-FFLAGS = -g -nofor-main
-CFLAGS = -O3 -qopenmp -DAdd_
+# ADDED -no-pie to disable PIE for linking, kept -fopenmp for OpenMP
+
+CFLAGS = -O3 -fopenmp -DAdd_ 
+FFLAGS = -g -fopenmp
 
 # MUMPS paths
-mumps = $(HOME)/Install/MUMPS_5.3.4
-pord = $(mumps)/PORD
-# metis = $(HOME)/Install/metis-5.1.0
-
-# MKL libraries - fixed order
-LMKL = -L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
-
-# PORD includes and libraries
-IPORD = -I$(pord)/include/
-LPORD = -L$(pord)/lib/ -lpord
-
-# MUMPS includes and libraries - CORRECTED ORDER
+mumps = $(HOME)/Install/MUMPS_5.7.3
 IMUMPS = -I$(mumps)/include
-# Note: mumps_common must come before dmumps/cmumps
-LMUMPS = -L$(mumps)/lib -ldmumps -lcmumps -lmumps_common
+LMUMPS = -L$(mumps)/lib -ldmumps -lmumps_common
 
-# METIS (uncomment if needed)
-# IMETIS = -I$(metis)/include
-# LMETIS = -L$(metis)/lib -lmetis
+pord = $(mumps)/PORD
+IPORD = -I$(pord)/include
+LPORD = -L$(pord)/lib -lpord
+
+IMETIS    = -I/usr/include/parmetis
+#IMETIS    = -I/usr/include/metis #sequential version
+LMETIS = -L/usr/lib  -lparmetis -lmetis
+
+
+# Begin orderings
+ISCOTCH   = -I/usr/include/scotch
+LSCOTCH   = -L/usr/lib -lptesmumps -lptscotch -lptscotcherr
+#LSCOTCH   = -L/usr/lib -lesmumps -lscotch -lscotcherr #sequential version
+
 
 #===========================================================
 BIN = .
 
-# LIBRARY ORDER IS CRITICAL - CORRECTED
-# Order: MUMPS libraries -> PORD -> MKL -> OpenMP -> system libraries
-LIB = $(LMUMPS) $(LPORD) $(LMKL) -liomp5 -lpthread -lm -ldl
-INC = $(IMUMPS) $(IPORD)  # $(IMETIS) if using METIS
+# Order: MUMPS -> PORD -> SCOTCH -> ScaLAPACK -> LAPACK -> BLAS -> system libraries
+LIB = $(LMUMPS) $(LMETIS) $(LPORD) $(LSCOTCH) -lscalapack-openmpi -llapack -lblas -lpthread -lm 
+INC = $(IMUMPS) $(IPORD) $(LMETIS) $(ISCOTCH)
+
 
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)
 
 all: clean main
 
-# Main target - removed -C from linking, added OpenMP flag
 main: $(OBJ)
-	$(FC) $(FFLAGS) -qopenmp -o $(BIN)/main $(OBJ) $(LIB)
+	$(FC) $(FFLAGS) -o $(BIN)/main $(OBJ) $(LIB)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@ $(INC)

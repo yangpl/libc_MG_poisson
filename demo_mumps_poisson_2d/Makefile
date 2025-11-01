@@ -2,12 +2,10 @@
 FC = mpif90 
 CC = mpicc 
 
-# Flags - removed -C (check all) during linking as it can cause issues
-# ADDED -no-pie to disable PIE for linking, kept -fopenmp for OpenMP
-
-CFLAGS = -O3 -fopenmp -DAdd_ 
+CFLAGS = -O3 -fopenmp -DAdd_ #validate Add_=1 in the code
 FFLAGS = -g -fopenmp
 
+#===========================================================
 # MUMPS paths
 mumps = $(HOME)/Install/MUMPS_5.7.3
 IMUMPS = -I$(mumps)/include
@@ -18,23 +16,19 @@ IPORD = -I$(pord)/include
 LPORD = -L$(pord)/lib -lpord
 
 IMETIS    = -I/usr/include/parmetis
+LMETIS = -L/usr/lib  -lparmetis -lmetis #parallel version
 #IMETIS    = -I/usr/include/metis #sequential version
-LMETIS = -L/usr/lib  -lparmetis -lmetis
 
-
-# Begin orderings
 ISCOTCH   = -I/usr/include/scotch
-LSCOTCH   = -L/usr/lib -lptesmumps -lptscotch -lptscotcherr
+LSCOTCH   = -L/usr/lib -lptesmumps -lptscotch -lptscotcherr #parallel version
 #LSCOTCH   = -L/usr/lib -lesmumps -lscotch -lscotcherr #sequential version
-
 
 #===========================================================
 BIN = .
 
 # Order: MUMPS -> PORD -> SCOTCH -> ScaLAPACK -> LAPACK -> BLAS -> system libraries
-LIB = $(LMUMPS) $(LMETIS) $(LPORD) $(LSCOTCH) -lscalapack-openmpi -llapack -lblas -lpthread -lm 
+LIB = $(LMUMPS) $(LPORD) $(LMETIS) $(LSCOTCH) -lscalapack-openmpi -llapack -lblas -lpthread -lm 
 INC = $(IMUMPS) $(IPORD) $(LMETIS) $(ISCOTCH)
-
 
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)

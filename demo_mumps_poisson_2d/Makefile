@@ -16,8 +16,8 @@ IPORD = -I$(pord)/include
 LPORD = -L$(pord)/lib -lpord
 
 IMETIS    = -I/usr/include/parmetis
-LMETIS = -L/usr/lib  -lparmetis -lmetis #parallel version
 #IMETIS    = -I/usr/include/metis #sequential version
+LMETIS = -L/usr/lib  -lparmetis -lmetis #parallel version
 
 ISCOTCH   = -I/usr/include/scotch
 LSCOTCH   = -L/usr/lib -lptesmumps -lptscotch -lptscotcherr #parallel version
@@ -25,11 +25,8 @@ LSCOTCH   = -L/usr/lib -lptesmumps -lptscotch -lptscotcherr #parallel version
 
 #===========================================================
 BIN = .
-
-# Order: MUMPS -> PORD -> SCOTCH -> ScaLAPACK -> LAPACK -> BLAS -> system libraries
 LIB = $(LMUMPS) $(LPORD) $(LMETIS) $(LSCOTCH) -lscalapack-openmpi -llapack -lblas -lpthread -lm 
 INC = $(IMUMPS) $(IPORD) $(LMETIS) $(ISCOTCH)
-
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)
 
